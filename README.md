@@ -1,5 +1,7 @@
 # opencode-rewind
 
+[English](./README.md) | [中文](./README.zh-CN.md)
+
 Claude Code style `/rewind` for [opencode](https://opencode.ai) — **git-free**, prompt-based snapshots.
 
 Each user prompt (non-`/` command) is snapshotted to `.opencode/rewind/snapshots/<id>/` and recorded in `.opencode/rewind/history.json`. List via `/rewind`, pick a prompt with arrow keys, choose 1 of 6 actions to restore.

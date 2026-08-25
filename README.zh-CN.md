@@ -1,5 +1,7 @@
 # opencode-rewind
 
+[English](./README.md) | [中文](./README.zh-CN.md)
+
 为 [opencode](https://opencode.ai) 提供的类 Claude Code `/rewind` 插件 — **无 git 依赖**，基于 prompt 的快照。
 
 每个用户 prompt（非 `/` 命令）都会自动快照到 `.opencode/rewind/snapshots/<id>/` 并记录在 `.opencode/rewind/history.json`。通过 `/rewind` 列出，用方向键选择，6 选 1 恢复。
