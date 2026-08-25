@@ -1,0 +1,32 @@
+{
+  "name": "opencode-rewind",
+  "version": "1.0.0",
+  "description": "Claude Code style /rewind for opencode — git-free, prompt-based snapshots. Each user prompt is snapshotted to .opencode/rewind/snapshots and can be restored via /rewind.",
+  "type": "module",
+  "main": "src/index.ts",
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "rewind",
+    "checkpoint",
+    "claude-code"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/opencode-rewind.git"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "test": "bun test"
+  }
+}
