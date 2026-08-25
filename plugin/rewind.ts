@@ -126,7 +126,8 @@ async function listFilesRecursive(root: string, base = root): Promise<string[]> 
         if (opName === "rewind" || opName === "node_modules") continue
         const opFull = path.join(opRoot, opName)
         try {
-          const st = await fs.stat(opFull)
+          const st = await fs.lstat(opFull)
+          if (st.isSymbolicLink()) continue
           if (st.isDirectory()) out.push(...(await listFilesRecursive(opFull, base)))
           else out.push(path.relative(base, opFull))
         } catch {}
@@ -136,7 +137,8 @@ async function listFilesRecursive(root: string, base = root): Promise<string[]> 
     if (IGNORE_DIRS.has(name)) continue
     const full = path.join(root, name)
     try {
-      const st = await fs.stat(full)
+      const st = await fs.lstat(full)
+      if (st.isSymbolicLink()) continue
       if (st.isDirectory()) out.push(...(await listFilesRecursive(full, base)))
       else out.push(path.relative(base, full))
     } catch {}
@@ -146,7 +148,8 @@ async function listFilesRecursive(root: string, base = root): Promise<string[]> 
 async function snapshotWorkingTree(dir: string, id: string): Promise<string> {
   const snapDir = path.join(dir, SNAPSHOT_ROOT, id)
   await ensureDir(snapDir)
-  const entries = await fs.readdir(dir)
+  let entries: string[] = []
+  try { entries = await fs.readdir(dir) } catch { return path.relative(dir, snapDir).replace(/\\/g, "/") }
   for (const name of entries) {
     if (IGNORE_DIRS.has(name)) continue
     if (name === ".opencode") {
@@ -379,16 +382,18 @@ const RewindPlugin: Plugin = async ({ client, directory }) => {
     },
     // 处理完自动入列：有 prompt 则更新该条，无 prompt 则新建 auto 记录（满足任意文件改动都进 /rewind）
     // 修复：避免跨 prompt 误合并 — auto 提示的条目不复用，需新建；同 prompt 内多文件改动才更新
+    // 大项目说明：当前为全量拷贝（精确还原，含新建/删除），与 Claude Code 仅跟踪已编辑文件不同。
+    // 大仓库可通过 /checkpoint 手动控制，或后续开启增量模式（仅还原已编辑文件）
     "tool.execute.after": async (input: any, output: any) => {
       try {
         const raw = input?.tool ?? input?.name ?? input?.toolName
         const name = getToolName(raw).toLowerCase()
         const args = (input?.args ?? output?.args ?? {}) as any
-        const isEdit = name === "edit" || name === "write"
+        const isEdit = name === "edit" || name === "write" || name === "apply_patch" || name === "update"
         let isBashMod = false
         if (name === "bash" && args?.command) {
           const cmd = String(args.command).toLowerCase()
-          isBashMod = ["rm ", "mv ", "cp ", "mkdir", "touch", "echo", ">", "cat >"].some((p) => cmd.includes(p))
+          isBashMod = ["rm ", "mv ", "cp ", "mkdir", "touch", "echo", "sed ", "perl ", "python ", ">", "cat >", ">>"].some((p) => cmd.includes(p))
         }
         if (!isEdit && !isBashMod) return
         // 取文件名用于 auto prompt

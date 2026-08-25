@@ -6,33 +6,24 @@
 
 每个用户 prompt（非 `/` 命令）都会自动快照到 `.opencode/rewind/snapshots/<id>/` 并记录在 `.opencode/rewind/history.json`。通过 `/rewind` 列出，用方向键选择，6 选 1 恢复。
 
-## 功能特性
+## 与项目目录的关系
 
-- **自动快照**：每次用户输入自动快照（最多 100 条，`src/index.ts:25` 的 `MAX_HISTORY`），`write`/`edit` 会更新最后一条快照；`bash` 文件修改命令会创建 `auto:` 条目
-- **忽略规则**：忽略 `.git/node_modules/.opencode/.cache/dist/build/.next/coverage/tmp/logs/.turbo/out/.parcel-cache/.vite/.idea/.vscode`，跳过 `>50MB` 大文件和软链，精确排除 `.opencode/rewind` 本身（避免递归拷贝）
-- **.opencode 一致性**：`.opencode/*`（除 `rewind`/`node_modules`）会一并快照与恢复，`listFilesRecursive` 与 `snapshotWorkingTree` 逻辑一致
-- **无侵入**：文件级拷贝，无需 git，非 git 项目也可用
-- **交互式**：`/rewind` 列出最近 10 条，**按时间戳降序（最新在上）** 并过滤系统指令（`isIgnorablePrompt` 过滤 `你是 rewind 助手...`），方向键选择 → 6 个操作：
-  1. Restore code and conversation（回退代码+对话）
-  2. Restore conversation（仅对话）
-  3. Restore code（仅代码）
-  4. Summarize from here（从此处压缩后续）
-  5. Summarize up to here（压缩此前）
-  6. Never mind（取消）
-- **Agent 工具**：`rewind`、`list_checkpoints`、`restore_checkpoint`（均过滤系统提示并按最新排序）
-- **稳健的 prompt 提取**：`chat.message` 通过 `extractContent`/`getMessageFrom` 兼容 `string`/`array`/`parts`/`text`/`prompt` 多种格式
-- **原子化历史**：`history.json` 先写 `tmp` 再 `rename`，单文件 `try/catch`，单个文件失败不影响整次快照
-- **正确的合并策略**：`auto:` 提示会新建条目；仅非 `auto` 的最后一条才通过 `updateLastSnapshot` 更新，恢复后重置 `lastPrompt`
+* **项目根目录** = 你的 `opencode.json` 所在、运行 `opencode` 的目录。插件通过 opencode 传入的 `directory` 读写 `<项目>/.opencode/rewind/`。
+* **必须同时具备两部分：**
+  1. **Plugin**（`src/index.ts` / `plugin/rewind.ts`）— 监听 `chat.message` 与 `tool.execute.after`，提供 `rewind`/`list_checkpoints`/`restore_checkpoint` 三个工具。通过 `opencode.json: plugin` 加载。
+  2. **Command**（`command/rewind.md`）— 定义斜杠命令 `/rewind`（内部用 `question` 调上述工具做箭头交互）。需放在 `.opencode/commands/rewind.md`（项目级）或 `~/.config/opencode/commands/rewind.md`（全局）。缺少它则工具存在但 TUI 输入 `/` 看不到 `/rewind`。
 
 ## 安装
 
-### 从 npm 安装
+### 方式 A — npm（推荐）
 
 ```bash
 npm i @nameused/opencode-rewind
+# 或 bun add / pnpm add / yarn add
 ```
 
-`opencode.json`：
+在**项目根**的 `opencode.json`（不存在则新建，`opencode.jsonc` 也可）：
+
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
@@ -40,17 +31,45 @@ npm i @nameused/opencode-rewind
 }
 ```
 
-重启 opencode 生效。
-
-### 本地安装
+`@nameused/opencode-rewind` 发布包已包含 `command/` 与 `plugin/`（`package.json: files`），**但 opencode 不会自动安装 command 文件**，需手动拷一次：
 
 ```bash
-cp plugin/rewind.ts .opencode/plugin/rewind.ts
-# 或
-cp src/index.ts .opencode/plugin/rewind.ts
+mkdir -p .opencode/commands
+cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 ```
 
-`src/index.ts` 为源文件（`plugin/rewind.ts` 已同步）。
+> 全局安装：`mkdir -p ~/.config/opencode/commands && cp node_modules/@nameused/opencode-rewind/command/rewind.md ~/.config/opencode/commands/rewind.md`，并把 `plugin` 写到 `~/.config/opencode/opencode.json`。
+
+重启 opencode。输入 `/` 应能看到 `/rewind` 与 `/checkpoint`。
+
+> npm 插件安装原理：opencode 启动时用 `bun` 自动安装，缓存于 `~/.cache/opencode/node_modules/`。若无效果，清空该缓存后重启，或查看日志（`service:"rewind"` 的 `client.app.log`）。
+
+### 方式 B — 本地（不走 npm）
+
+```bash
+mkdir -p .opencode/plugins .opencode/commands
+cp src/index.ts .opencode/plugins/rewind.ts
+# 或 cp plugin/rewind.ts .opencode/plugins/rewind.ts（两者已同步）
+cp command/rewind.md .opencode/commands/rewind.md
+```
+
+无需改 `opencode.json`。重启生效。
+
+`src/index.ts` 为源文件（`plugin/rewind.ts` 每次发布前同步）。
+
+### 验证
+
+* 输入 `/` 能看到 `/rewind`
+* 发一条普通消息（非 `/`），再 `/rewind` 能列出它
+* agent 可用工具：`list_checkpoints`、`restore_checkpoint`、`rewind`
+
+### 排障 — 看不到 `/rewind`
+
+1. 是否把 `command/rewind.md` 拷到了 `.opencode/commands/rewind.md`（复数，旧文档曾写 `command/` 单数）？
+2. 改完 `opencode.json` / 新增文件后是否重启了 opencode？
+3. `opencode.json` 是否在项目根（全局则在 `~/.config/opencode/opencode.json`）？`opencode.jsonc` 也可。
+4. 重启后 `~/.cache/opencode/node_modules/@nameused/opencode-rewind` 是否存在？不存在则 `rm -rf ~/.cache/opencode` 后重启。
+5. opencode 版本是否支持 plugin（`>=0.10`）。
 
 ## 使用
 
@@ -78,17 +97,25 @@ Agent 自然语言：
 
 恢复：删除当前不在快照中的文件（含 `.opencode` 中被跟踪的文件），再拷回快照文件；空目录自动清理；恢复后重置 `lastPrompt` 为目标条目。
 
+## 大项目说明
+
+当前 `snapshotWorkingTree: src/index.ts:146` 为**全量拷贝**（精确还原，含新建/删除文件），与 Claude Code 仅跟踪已编辑文件不同。小/中型仓库适合；大仓库（`>10k` 文件）每次快照 `O(N)`，100 份占盘较大。缓解：
+
+* 已忽略 `.git/node_modules/.opencode/.cache/dist/build/.next/coverage/tmp/logs/.turbo/out/.parcel-cache/.vite/.idea/.vscode`，跳过 `>50MB` 与软链（`1.0.1` 修复 `listFilesRecursive` 改用 `lstat`）、精确排除 `.opencode/rewind`。
+* 风险 `bash` 前手动 `/checkpoint`（`bash` 仅启发式跟踪：`rm/mv/cp/mkdir/touch/echo/sed/perl/python/>/cat >`）。
+* 后续可切增量模式（仅还原已编辑文件，与 Claude Code Limitations 一致），以精确性换速度，已列为增强项。
+
 ## 限制（与 Claude Code 一致）
 
 - `bash` 改动、subagent、软链不完全跟踪 — 风险操作前请先 `/checkpoint`
 - `>50MB` 大文件跳过
-- 软链接跳过
+- 软链接跳过（`1.0.1` 修复 `listFilesRecursive` 用 `lstat`）
 
 ## 开发
 
 ```bash
 node --check src/index.ts
-# 修改 src/index.ts，必要时同步到 plugin/rewind.ts
+# 修改 src/index.ts，发布前会同步到 plugin/rewind.ts
 ```
 
 ## 发布

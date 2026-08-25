@@ -6,33 +6,24 @@ Claude Code style `/rewind` for [opencode](https://opencode.ai) — **git-free**
 
 Each user prompt (non-`/` command) is snapshotted to `.opencode/rewind/snapshots/<id>/` and recorded in `.opencode/rewind/history.json`. List via `/rewind`, pick a prompt with arrow keys, choose 1 of 6 actions to restore.
 
-## Features
+## How it relates to your project
 
-- **Auto snapshot** on every user prompt (up to 100, `MAX_HISTORY` in `src/index.ts:25`), plus `write`/`edit` updates the last snapshot; `bash` file-modifying commands create `auto:` entries
-- **Ignores** `.git/node_modules/.opencode/.cache/dist/build/.next/coverage/tmp/logs/.turbo/out/.parcel-cache/.vite/.idea/.vscode`, skips `>50MB` files and symlinks, precisely excludes `.opencode/rewind` itself (no recursive copy)
-- **Consistent .opencode handling**: `.opencode/*` (except `rewind`/`node_modules`) is snapshotted and restored; `listFilesRecursive` mirrors `snapshotWorkingTree`
-- **Non-destructive** — file-level copy, no git required; works in non-git projects
-- **Interactive** — `/rewind` lists last 10 prompts **sorted by timestamp desc (newest on top)** and filtered (`isIgnorablePrompt` excludes `你是 rewind 助手...` system prompts), arrow-key select → 6 actions:
-  1. Restore code and conversation
-  2. Restore conversation
-  3. Restore code
-  4. Summarize from here
-  5. Summarize up to here
-  6. Never mind
-- **Agent tools** — `rewind`, `list_checkpoints`, `restore_checkpoint` (all filter system prompts and sort by newest)
-- **Robust prompt capture** — handles `string`/`array`/`parts`/`text`/`prompt` in `chat.message` via `extractContent`/`getMessageFrom`
-- **Atomic history** — `history.json` written via `tmp` + `rename`, per-file `try/catch` so one file failure doesn't break snapshot
-- **Correct merge** — `auto:` prompts create new entries; only non-`auto` last prompts are updated via `updateLastSnapshot`, `lastPrompt` reset on restore
+* **Project root** = where your `opencode.json` lives and where you run `opencode`. The plugin reads `directory` from opencode and stores snapshots under `<project>/.opencode/rewind/`.
+* **Two parts are required:**
+  1. **Plugin** (`src/index.ts` / `plugin/rewind.ts`) — hooks `chat.message` and `tool.execute.after`, provides tools `rewind`/`list_checkpoints`/`restore_checkpoint`. Loaded via `opencode.json: plugin`.
+  2. **Command** (`command/rewind.md`) — defines the slash command `/rewind` (uses `question` + the tools above). Loaded from `.opencode/commands/rewind.md` (project) or `~/.config/opencode/commands/rewind.md` (global). Without it, tools exist but `/rewind` won't appear in TUI.
 
 ## Installation
 
-### From npm
+### Option A — npm (recommended)
 
 ```bash
 npm i @nameused/opencode-rewind
+# or bun add / pnpm add / yarn add
 ```
 
-`opencode.json`:
+In **project root** `opencode.json` (create if not exists, `opencode.jsonc` also works):
+
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
@@ -40,17 +31,45 @@ npm i @nameused/opencode-rewind
 }
 ```
 
-Restart opencode to activate.
-
-### Local
+`@nameused/opencode-rewind` is published with `command/` and `plugin/` included (see `package.json: files`). **But opencode does not auto-install the command file** — you must copy it once:
 
 ```bash
-cp plugin/rewind.ts .opencode/plugin/rewind.ts
-# or
-cp src/index.ts .opencode/plugin/rewind.ts
+mkdir -p .opencode/commands
+cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 ```
 
-`src/index.ts` is the source of truth (`plugin/rewind.ts` synced).
+> Global alternative: `mkdir -p ~/.config/opencode/commands && cp node_modules/@nameused/opencode-rewind/command/rewind.md ~/.config/opencode/commands/rewind.md` and put `plugin` in `~/.config/opencode/opencode.json`.
+
+Restart opencode. Type `/` — you should see `/rewind` and `/checkpoint`.
+
+> How npm plugins are installed: opencode runs `bun install` at startup and caches packages in `~/.cache/opencode/node_modules/`. If you see nothing, clear that cache and restart, or check TUI logs (`client.app.log` with `service:"rewind"`).
+
+### Option B — local (no npm)
+
+```bash
+mkdir -p .opencode/plugins .opencode/commands
+cp src/index.ts .opencode/plugins/rewind.ts
+# or cp plugin/rewind.ts .opencode/plugins/rewind.ts  (both are synced)
+cp command/rewind.md .opencode/commands/rewind.md
+```
+
+No `opencode.json` change needed. Restart opencode.
+
+`src/index.ts` is the source of truth (`plugin/rewind.ts` synced each release).
+
+### Verify
+
+* `/rewind` appears when typing `/` in TUI
+* Send a normal prompt (not `/...`), then `/rewind` should list it
+* Tools available to agent: `list_checkpoints`, `restore_checkpoint`, `rewind`
+
+### Troubleshooting — `/rewind` not visible
+
+1. Did you copy `command/rewind.md` to `.opencode/commands/rewind.md` (plural, not `command/`)? Old docs used `command/` singular — now `commands/`.
+2. Did you restart opencode after editing `opencode.json` / adding files?
+3. Is `opencode.json` in project root (or `~/.config/opencode/opencode.json` for global)? `opencode.jsonc` also works.
+4. Check `~/.cache/opencode/node_modules/@nameused/opencode-rewind` exists after restart. If not, run `bun pm cache rm` or `rm -rf ~/.cache/opencode` and restart.
+5. Check opencode version supports plugins (`>=0.10`).
 
 ## Usage
 
@@ -65,8 +84,8 @@ cp src/index.ts .opencode/plugin/rewind.ts
 Agent natural language:
 
 ```
-列出 checkpoints
-恢复到第2个检查点
+List checkpoints
+Restore to checkpoint 2
 ```
 
 Sorting/filtering: `rewind`/`list_checkpoints` filter `isIgnorablePrompt` and sort by `timestamp` desc before slicing.
@@ -78,17 +97,25 @@ Sorting/filtering: `rewind`/`list_checkpoints` filter `isIgnorablePrompt` and so
 
 Restore: deletes current files not in snapshot (including `.opencode` tracked files), then copies snapshot files; empty dirs pruned; `lastPrompt` reset to restored entry.
 
+## Large projects
+
+Current `snapshotWorkingTree: src/index.ts:146` is a **full copy** (exact restore, including newly created/deleted files), not Claude Code's “only edited files” model. For small/medium repos this is correct and simple. For large repos (`>10k` files) each checkpoint is `O(N)` and 100 checkpoints use more disk. Mitigations:
+
+* Ignores `.git/node_modules/.opencode/.cache/dist/build/.next/coverage/tmp/logs/.turbo/out/.parcel-cache/.vite/.idea/.vscode`, skips `>50MB` and symlinks (fixed in `1.0.1` to use `lstat`), precisely excludes `.opencode/rewind`.
+* Use `/checkpoint` manually before risky `bash` edits (bash is only heuristically tracked: `rm/mv/cp/mkdir/touch/echo/sed/perl/python/>/cat >`).
+* Future: incremental mode (only restore edited files, aligned with Claude Code limitations) can be enabled to trade exactness for speed — tracked as enhancement.
+
 ## Limitations (same as Claude Code)
 
 - `bash` file changes, subagents, symlinks not fully tracked — use `/checkpoint` before risky bash
 - Large files `>50MB` skipped
-- Symlinks skipped
+- Symlinks skipped (`1.0.1` fixes `listFilesRecursive` to use `lstat`)
 
 ## Development
 
 ```bash
 node --check src/index.ts
-# edit src/index.ts, sync to plugin/rewind.ts if needed
+# edit src/index.ts, it will be synced to plugin/rewind.ts before publish
 ```
 
 ## Publish

@@ -1,12 +1,15 @@
 {
   "name": "@nameused/opencode-rewind",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Claude Code style /rewind for opencode — git-free, prompt-based snapshots. Each user prompt is snapshotted to .opencode/rewind/snapshots and can be restored via /rewind.",
   "type": "module",
   "main": "src/index.ts",
   "files": [
     "src",
+    "plugin",
+    "command",
     "README.md",
+    "README.zh-CN.md",
     "LICENSE"
   ],
   "keywords": [
