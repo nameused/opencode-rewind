@@ -20,7 +20,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/opencode-rewind.git"
+    "url": "https://github.com/nameused/opencode-rewind.git"
   },
   "peerDependencies": {
     "@opencode-ai/plugin": "*"
