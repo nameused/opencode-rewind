@@ -36,7 +36,7 @@ mkdir -p .opencode
 cat > .opencode/package.json <<'JSON'
 {
   "dependencies": {
-    "@nameused/opencode-rewind": "^1.0.1"
+    "@nameused/opencode-rewind": "^1.0.2"
   }
 }
 JSON
