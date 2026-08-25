@@ -15,7 +15,9 @@ Each user prompt (non-`/` command) is snapshotted to `.opencode/rewind/snapshots
 
 ## Installation
 
-### Option A — npm (recommended)
+### Option A — npm (recommended) — 2 locations
+
+#### A1. Project `node_modules` (simplest)
 
 Run in **project root** (where `opencode.json` lives):
 
@@ -24,6 +26,26 @@ npm i @nameused/opencode-rewind
 # or bun add / pnpm add / yarn add
 # installs to <project>/node_modules/@nameused/opencode-rewind
 ```
+
+#### A2. `.opencode` isolated (keeps project `package.json` clean)
+
+Keep `package.json` clean by installing into `<project>/.opencode` itself (opencode supports `<project>/.opencode/package.json` per `opencode.ai/docs/plugins: Dependencies`):
+
+```bash
+mkdir -p .opencode
+cat > .opencode/package.json <<'JSON'
+{
+  "dependencies": {
+    "@nameused/opencode-rewind": "^1.0.1"
+  }
+}
+JSON
+# install into <project>/.opencode/node_modules
+(cd .opencode && npm install)
+# or: (cd .opencode && bun install)
+```
+
+Both A1 and A2 work; A2 puts the package at `<project>/.opencode/node_modules/@nameused/opencode-rewind` at the same level as your project root's `.opencode` dir (sibling to project files, inside `.opencode`).
 
 In **project root** `opencode.json` (create if not exists, `opencode.jsonc` also works):
 
@@ -38,8 +60,10 @@ In **project root** `opencode.json` (create if not exists, `opencode.jsonc` also
 
 ```bash
 mkdir -p .opencode/commands
-# source is <project>/node_modules/... if you ran npm i above
+# A1 source: <project>/node_modules/...
 cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
+# A2 source: <project>/.opencode/node_modules/...
+# cp .opencode/node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 # if you skipped npm i and let opencode auto-install via opencode.json, source is instead:
 # cp ~/.cache/opencode/node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 ```
@@ -48,7 +72,7 @@ cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/r
 
 Restart opencode. Type `/` — you should see `/rewind` and `/checkpoint`.
 
-> Where packages live: `npm i` → `<project>/node_modules/@nameused/opencode-rewind`; auto-install via `opencode.json` → `~/.cache/opencode/node_modules/@nameused/opencode-rewind` (opencode runs `bun install` at startup). If you see nothing, clear `~/.cache/opencode` and restart, or check TUI logs (`client.app.log` with `service:"rewind"`).
+> Where packages live: A1 `npm i` → `<project>/node_modules/@nameused/opencode-rewind`; A2 `(cd .opencode && npm i)` → `<project>/.opencode/node_modules/@nameused/opencode-rewind` (same level as project `.opencode` dir, isolated); auto-install via `opencode.json` → `~/.cache/opencode/node_modules/@nameused/opencode-rewind` (opencode runs `bun install` at startup). If you see nothing, clear `~/.cache/opencode` and restart, or check TUI logs (`client.app.log` with `service:"rewind"`).
 
 ### Option B — local (no npm)
 

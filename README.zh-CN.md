@@ -15,7 +15,9 @@
 
 ## 安装
 
-### 方式 A — npm（推荐）
+### 方式 A — npm（推荐）— 两种位置
+
+#### A1. 项目 `node_modules`（最简单）
 
 在**项目根**（`opencode.json` 所在目录）执行：
 
@@ -24,6 +26,26 @@ npm i @nameused/opencode-rewind
 # 或 bun add / pnpm add / yarn add
 # 安装到 <项目>/node_modules/@nameused/opencode-rewind
 ```
+
+#### A2. `.opencode` 隔离（保持项目 `package.json` 干净）
+
+把包安到与项目根同级的 `.opencode` 目录内（`project/.opencode`，opencode 支持 `<项目>/.opencode/package.json`，见 `opencode.ai/docs/plugins: Dependencies`）：
+
+```bash
+mkdir -p .opencode
+cat > .opencode/package.json <<'JSON'
+{
+  "dependencies": {
+    "@nameused/opencode-rewind": "^1.0.1"
+  }
+}
+JSON
+# 安装到 <项目>/.opencode/node_modules
+(cd .opencode && npm install)
+# 或: (cd .opencode && bun install)
+```
+
+A1 与 A2 均可，A2 的包位于 `<项目>/.opencode/node_modules/@nameused/opencode-rewind`，与项目根的 `.opencode` 目录同级且隔离。
 
 在**项目根**的 `opencode.json`（不存在则新建，`opencode.jsonc` 也可）：
 
@@ -38,8 +60,10 @@ npm i @nameused/opencode-rewind
 
 ```bash
 mkdir -p .opencode/commands
-# 源为 <项目>/node_modules/...（上一步 npm i 后）
+# A1 源: <项目>/node_modules/...
 cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
+# A2 源: <项目>/.opencode/node_modules/...
+# cp .opencode/node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 # 若跳过 npm i 直接靠 opencode.json 自动安装，源则在：
 # cp ~/.cache/opencode/node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 ```
@@ -48,7 +72,7 @@ cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/r
 
 重启 opencode。输入 `/` 应能看到 `/rewind` 与 `/checkpoint`。
 
-> 包在何处：`npm i` → `<项目>/node_modules/@nameused/opencode-rewind`；经 `opencode.json` 自动安装 → `~/.cache/opencode/node_modules/@nameused/opencode-rewind`（opencode 启动时 `bun install`）。若无效果，清空 `~/.cache/opencode` 后重启，或查看日志（`service:"rewind"` 的 `client.app.log`）。
+> 包在何处：A1 `npm i` → `<项目>/node_modules/@nameused/opencode-rewind`；A2 `(cd .opencode && npm i)` → `<项目>/.opencode/node_modules/@nameused/opencode-rewind`（与项目根 `.opencode` 同级隔离）；经 `opencode.json` 自动安装 → `~/.cache/opencode/node_modules/@nameused/opencode-rewind`（opencode 启动时 `bun install`）。若无效果，清空 `~/.cache/opencode` 后重启，或查看日志（`service:"rewind"` 的 `client.app.log`）。
 
 ### 方式 B — 本地（不走 npm）
 
