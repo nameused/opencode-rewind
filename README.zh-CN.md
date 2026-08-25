@@ -17,9 +17,12 @@
 
 ### 方式 A — npm（推荐）
 
+在**项目根**（`opencode.json` 所在目录）执行：
+
 ```bash
 npm i @nameused/opencode-rewind
 # 或 bun add / pnpm add / yarn add
+# 安装到 <项目>/node_modules/@nameused/opencode-rewind
 ```
 
 在**项目根**的 `opencode.json`（不存在则新建，`opencode.jsonc` 也可）：
@@ -35,14 +38,17 @@ npm i @nameused/opencode-rewind
 
 ```bash
 mkdir -p .opencode/commands
+# 源为 <项目>/node_modules/...（上一步 npm i 后）
 cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
+# 若跳过 npm i 直接靠 opencode.json 自动安装，源则在：
+# cp ~/.cache/opencode/node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 ```
 
-> 全局安装：`mkdir -p ~/.config/opencode/commands && cp node_modules/@nameused/opencode-rewind/command/rewind.md ~/.config/opencode/commands/rewind.md`，并把 `plugin` 写到 `~/.config/opencode/opencode.json`。
+> 全局安装：`mkdir -p ~/.config/opencode/commands && cp <源>/command/rewind.md ~/.config/opencode/commands/rewind.md`，并把 `plugin` 写到 `~/.config/opencode/opencode.json`。
 
 重启 opencode。输入 `/` 应能看到 `/rewind` 与 `/checkpoint`。
 
-> npm 插件安装原理：opencode 启动时用 `bun` 自动安装，缓存于 `~/.cache/opencode/node_modules/`。若无效果，清空该缓存后重启，或查看日志（`service:"rewind"` 的 `client.app.log`）。
+> 包在何处：`npm i` → `<项目>/node_modules/@nameused/opencode-rewind`；经 `opencode.json` 自动安装 → `~/.cache/opencode/node_modules/@nameused/opencode-rewind`（opencode 启动时 `bun install`）。若无效果，清空 `~/.cache/opencode` 后重启，或查看日志（`service:"rewind"` 的 `client.app.log`）。
 
 ### 方式 B — 本地（不走 npm）
 

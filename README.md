@@ -17,9 +17,12 @@ Each user prompt (non-`/` command) is snapshotted to `.opencode/rewind/snapshots
 
 ### Option A — npm (recommended)
 
+Run in **project root** (where `opencode.json` lives):
+
 ```bash
 npm i @nameused/opencode-rewind
 # or bun add / pnpm add / yarn add
+# installs to <project>/node_modules/@nameused/opencode-rewind
 ```
 
 In **project root** `opencode.json` (create if not exists, `opencode.jsonc` also works):
@@ -35,14 +38,17 @@ In **project root** `opencode.json` (create if not exists, `opencode.jsonc` also
 
 ```bash
 mkdir -p .opencode/commands
+# source is <project>/node_modules/... if you ran npm i above
 cp node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
+# if you skipped npm i and let opencode auto-install via opencode.json, source is instead:
+# cp ~/.cache/opencode/node_modules/@nameused/opencode-rewind/command/rewind.md .opencode/commands/rewind.md
 ```
 
-> Global alternative: `mkdir -p ~/.config/opencode/commands && cp node_modules/@nameused/opencode-rewind/command/rewind.md ~/.config/opencode/commands/rewind.md` and put `plugin` in `~/.config/opencode/opencode.json`.
+> Global alternative: `mkdir -p ~/.config/opencode/commands && cp <source>/command/rewind.md ~/.config/opencode/commands/rewind.md` and put `plugin` in `~/.config/opencode/opencode.json`.
 
 Restart opencode. Type `/` — you should see `/rewind` and `/checkpoint`.
 
-> How npm plugins are installed: opencode runs `bun install` at startup and caches packages in `~/.cache/opencode/node_modules/`. If you see nothing, clear that cache and restart, or check TUI logs (`client.app.log` with `service:"rewind"`).
+> Where packages live: `npm i` → `<project>/node_modules/@nameused/opencode-rewind`; auto-install via `opencode.json` → `~/.cache/opencode/node_modules/@nameused/opencode-rewind` (opencode runs `bun install` at startup). If you see nothing, clear `~/.cache/opencode` and restart, or check TUI logs (`client.app.log` with `service:"rewind"`).
 
 ### Option B — local (no npm)
 
