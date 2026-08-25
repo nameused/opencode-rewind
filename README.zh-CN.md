@@ -26,17 +26,17 @@
 
 ## 安装
 
-### 从 npm 安装（发布后）
+### 从 npm 安装
 
 ```bash
-npm i opencode-rewind
+npm i @nameused/opencode-rewind
 ```
 
 `opencode.json`：
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-rewind"]
+  "plugin": ["@nameused/opencode-rewind"]
 }
 ```
 

@@ -26,17 +26,17 @@ Each user prompt (non-`/` command) is snapshotted to `.opencode/rewind/snapshots
 
 ## Installation
 
-### From npm (after publish)
+### From npm
 
 ```bash
-npm i opencode-rewind
+npm i @nameused/opencode-rewind
 ```
 
 `opencode.json`:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-rewind"]
+  "plugin": ["@nameused/opencode-rewind"]
 }
 ```
 
